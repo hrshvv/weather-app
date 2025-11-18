@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ThemeToggle } from '@/components/theme-toggle'
 import WeatherCard from '@/components/weather-card'
 import type { GetWeatherResult } from '@/components/ui/component'
+import { getWeatherCodeInfo, formatDate, formatTimeFromISO8601 } from '@/lib/weather-utils'
 
 interface WeatherData {
   city: string
@@ -108,7 +109,7 @@ export default function Home() {
     setLoadingSuggestions(true)
     try {
       const response = await fetch(
-        `http://127.0.0.1:5000/search-cities?q=${encodeURIComponent(query)}&limit=5`
+        `http://127.0.0.1:3000/search-cities?q=${encodeURIComponent(query)}&limit=5`
       )
 
       if (response.ok) {
@@ -191,21 +192,31 @@ export default function Home() {
     })
     
     try {
-      const response = await fetch(`http://127.0.0.1:5000/get-weather?city=${encodeURIComponent(cityName)}`)
+      const response = await fetch(`http://127.0.0.1:3000/weather?city=${encodeURIComponent(cityName)}`)
       if (response.ok) {
-        const weatherData: WeatherData = await response.json()
+        const apiData = await response.json()
+        
+        // Transform Open-Meteo data to WeatherData format
+        const current = apiData.current
+        const location = apiData.location
+        const daily = apiData.daily
+        const weatherCodeInfo = getWeatherCodeInfo(current?.weathercode || 0)
+        
+        // Get today's high/low from daily forecast
+        const todayHigh = daily?.temperature_2m_max?.[0] || current?.temperature || 0
+        const todayLow = daily?.temperature_2m_min?.[0] || current?.temperature || 0
         
         // Convert to GetWeatherResult format
         const cardData: GetWeatherResult = {
-          location: `${weatherData.city}, ${weatherData.country}`,
+          location: `${location.resolved_name}, ${location.country}`,
           unit: unit,
-          temperature: convertTemp(weatherData.temperature),
-          condition: weatherData.description,
-          high: convertTemp(weatherData.temperature + 5), // Approximate high
-          low: convertTemp(weatherData.temperature - 5), // Approximate low
-          humidity: weatherData.humidity / 100, // Convert to 0-1 range
-          windKph: Math.round(weatherData.wind_speed * 3.6), // Convert m/s to km/h
-          icon: weatherData.icon
+          temperature: convertTemp(current?.temperature || 0),
+          condition: weatherCodeInfo.description,
+          high: convertTemp(todayHigh),
+          low: convertTemp(todayLow),
+          humidity: 0.5, // Open-Meteo doesn't provide humidity in current_weather
+          windKph: Math.round(current?.windspeed || 0), // Already in km/h from Open-Meteo
+          icon: weatherCodeInfo.icon
         }
         
         setRecentWeatherCards(prev => {
@@ -229,9 +240,14 @@ export default function Home() {
     }
   }, [recentSearches, fetchWeatherForCard])
 
-  // Format time from timestamp
-  const formatTime = (timestamp: number, timezone: number = 0): string => {
-    const date = new Date((timestamp + timezone) * 1000)
+  // Format time from ISO8601 string or timestamp
+  const formatTime = (time: string | number | undefined, timezone?: number): string => {
+    if (!time) return ''
+    if (typeof time === 'string') {
+      return formatTimeFromISO8601(time)
+    }
+    // Legacy timestamp support
+    const date = new Date((time + (timezone || 0)) * 1000)
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
@@ -244,10 +260,10 @@ export default function Home() {
     tomorrow.setDate(tomorrow.getDate() + 1)
     
     hourly.forEach((hour) => {
-      // Parse date and time - format is YYYY-MM-DD and HH:MM
-      const [year, month, day] = hour.date.split('-').map(Number)
-      const [hourNum, minute] = hour.time.split(':').map(Number)
-      const hourDate = new Date(year, month - 1, day, hourNum, minute)
+      // Parse date from YYYY-MM-DD and time from HH:MM format
+      const [hours, minutes] = hour.time.split(':').map(Number)
+      const hourDate = new Date(hour.date)
+      hourDate.setHours(hours, minutes, 0, 0)
       const dayKey = hourDate.toDateString()
       
       const hourDateOnly = new Date(hourDate)
@@ -283,38 +299,25 @@ export default function Home() {
       async (position) => {
         const { latitude, longitude } = position.coords
         try {
-          const [weatherResponse, forecastResponse, hourlyResponse] = await Promise.all([
-            fetch(`http://127.0.0.1:5000/get-weather?lat=${latitude}&lon=${longitude}`),
-            fetch(`http://127.0.0.1:5000/get-forecast?lat=${latitude}&lon=${longitude}`),
-            fetch(`http://127.0.0.1:5000/get-hourly?lat=${latitude}&lon=${longitude}`)
-          ])
-
-          if (!weatherResponse.ok) {
-            throw new Error('Failed to fetch weather data')
+          // Reverse geocode to get city name, then fetch weather
+          const geoResponse = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?latitude=${latitude}&longitude=${longitude}&count=1&language=en&format=json`
+          )
+          
+          if (!geoResponse.ok) {
+            throw new Error('Failed to get location name')
           }
-
-          // Handle forecast response - may fail if One Call API not subscribed
-          let forecastData: ForecastData | null = null
-          if (forecastResponse.ok) {
-            forecastData = await forecastResponse.json()
+          
+          const geoData = await geoResponse.json()
+          if (!geoData.results || geoData.results.length === 0) {
+            throw new Error('Location not found')
           }
-
-          // Handle hourly response - may fail if One Call API not subscribed
-          let hourlyData: HourlyForecast | null = null
-          if (hourlyResponse.ok) {
-            hourlyData = await hourlyResponse.json()
-          }
-
-          const weatherData: WeatherData = await weatherResponse.json()
-
-          setWeather(weatherData)
-          setForecast(forecastData)
-          setHourlyForecast(hourlyData)
-          if (hourlyData && hourlyData.hourly.length > 0) {
-            setShowHourly(true)
-          }
-          setCity(`${weatherData.city}, ${weatherData.country}`)
-          saveRecentSearch(`${weatherData.city}, ${weatherData.country}`)
+          
+          const locationName = geoData.results[0].name
+          const cityQuery = `${locationName}, ${geoData.results[0].country}`
+          
+          // Fetch weather using city name
+          await fetchWeather(cityQuery)
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to get location weather')
         } finally {
@@ -329,8 +332,12 @@ export default function Home() {
   }
 
   const handleSuggestionClick = (suggestion: CitySuggestion) => {
+    // Use just the city name for better geocoding results
+    const cityToSearch = suggestion.name
     setCity(suggestion.display_name)
     setShowSuggestions(false)
+    // Trigger search immediately with the city name
+    fetchWeather(cityToSearch)
   }
 
   const fetchWeather = async (cityName?: string) => {
@@ -348,42 +355,94 @@ export default function Home() {
     setShowSuggestions(false)
 
     try {
-      // Make requests: current weather, forecast, and hourly
-      const [weatherResponse, forecastResponse, hourlyResponse] = await Promise.all([
-        fetch(`http://127.0.0.1:5000/get-weather?city=${encodeURIComponent(searchCity)}`),
-        fetch(`http://127.0.0.1:5000/get-forecast?city=${encodeURIComponent(searchCity)}`),
-        fetch(`http://127.0.0.1:5000/get-hourly?city=${encodeURIComponent(searchCity)}`)
-      ])
+      // Call new unified weather endpoint
+      const weatherResponse = await fetch(
+        `http://127.0.0.1:3000/weather?city=${encodeURIComponent(searchCity)}`
+      )
 
       if (!weatherResponse.ok) {
         const errorData = await weatherResponse.json()
         throw new Error(errorData.error || 'Failed to fetch weather data')
       }
 
-      // Handle forecast response - may fail if One Call API not subscribed
+      const apiData = await weatherResponse.json()
+      const current = apiData.current
+      const location = apiData.location
+      const hourly = apiData.hourly
+      const daily = apiData.daily
+      
+      // Transform current weather
+      const weatherCodeInfo = getWeatherCodeInfo(current?.weathercode || 0)
+      const weatherData: WeatherData = {
+        city: location.resolved_name,
+        country: location.country,
+        temperature: current?.temperature || 0,
+        feels_like: current?.temperature || 0, // Open-Meteo doesn't provide feels_like in current_weather
+        description: weatherCodeInfo.description,
+        humidity: 0, // Open-Meteo doesn't provide humidity in current_weather
+        wind_speed: current?.windspeed || 0, // Already in km/h
+        icon: weatherCodeInfo.icon,
+        pressure: undefined,
+        visibility: undefined,
+        sunrise: daily?.sunrise?.[0] || undefined, // Store as ISO8601 string
+        sunset: daily?.sunset?.[0] || undefined, // Store as ISO8601 string
+        timezone: 0
+      }
+
+      // Transform daily forecast
       let forecastData: ForecastData | null = null
-      if (forecastResponse.ok) {
-        forecastData = await forecastResponse.json()
-      } else {
-        const errorData = await forecastResponse.json()
-        // Don't throw error for forecast, just log it
-        console.warn('Forecast data unavailable:', errorData.error)
-        if (errorData.error?.includes('One Call API subscription')) {
-          setError('Forecast unavailable: One Call API 3.0 subscription required. Please subscribe in your OpenWeatherMap account.')
+      if (daily && daily.time && daily.time.length > 0) {
+        const forecastDays: ForecastDay[] = daily.time.slice(0, 7).map((dateStr: string, index: number) => {
+          const { dayName, shortDate } = formatDate(dateStr)
+          const weatherCode = daily.weathercode?.[index] || 0
+          const codeInfo = getWeatherCodeInfo(weatherCode)
+          
+          return {
+            date: dateStr,
+            day_name: dayName,
+            short_date: shortDate,
+            high_temp: daily.temperature_2m_max?.[index] || 0,
+            low_temp: daily.temperature_2m_min?.[index] || 0,
+            icon: codeInfo.icon,
+            description: codeInfo.description
+          }
+        })
+        
+        forecastData = {
+          city: location.resolved_name,
+          country: location.country,
+          forecast: forecastDays
         }
       }
 
-      // Handle hourly response - may fail if One Call API not subscribed
+      // Transform hourly forecast
       let hourlyData: HourlyForecast | null = null
-      if (hourlyResponse.ok) {
-        hourlyData = await hourlyResponse.json()
-      } else {
-        const errorData = await hourlyResponse.json()
-        // Don't throw error for hourly, just log it
-        console.warn('Hourly data unavailable:', errorData.error)
+      if (hourly && hourly.time && hourly.time.length > 0) {
+        const hourlyList: HourlyData[] = hourly.time.slice(0, 48).map((timeStr: string, index: number) => {
+          const date = new Date(timeStr) // timeStr is ISO8601 format
+          const weatherCode = hourly.weathercode?.[index] || 0
+          const codeInfo = getWeatherCodeInfo(weatherCode)
+          
+          return {
+            time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            hour: date.getHours(),
+            date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+            temperature: hourly.temperature_2m?.[index] || 0,
+            feels_like: hourly.apparent_temperature?.[index] || 0,
+            description: codeInfo.description,
+            icon: codeInfo.icon,
+            humidity: 0, // Open-Meteo doesn't provide humidity in hourly
+            wind_speed: 0, // Open-Meteo doesn't provide wind in hourly
+            precipitation: hourly.precipitation?.[index] || 0
+          }
+        })
+        
+        hourlyData = {
+          city: location.resolved_name,
+          country: location.country,
+          hourly: hourlyList
+        }
       }
-
-      const weatherData: WeatherData = await weatherResponse.json()
       
       setWeather(weatherData)
       setForecast(forecastData)
@@ -656,7 +715,7 @@ export default function Home() {
                       <Wind className="w-8 h-8 text-accent-cool" />
                       <p className="text-xs sm:text-sm text-muted-foreground font-medium uppercase tracking-wide">Wind Speed</p>
                       <p className="text-2xl sm:text-3xl font-bold">
-                        {weather.wind_speed} <span className="text-sm font-normal">m/s</span>
+                        {weather.wind_speed} <span className="text-sm font-normal">km/h</span>
                       </p>
                     </div>
                   </CardContent>
@@ -729,7 +788,7 @@ export default function Home() {
                     48-Hour Forecast ({hourlyForecast.hourly.length} hours)
                   </CardTitle>
                   <span className="text-xs text-muted-foreground bg-accent-cool/20 px-2 py-1 rounded-full">
-                    One Call API 3.0
+                    Open-Meteo
                   </span>
                 </div>
                 <Button
