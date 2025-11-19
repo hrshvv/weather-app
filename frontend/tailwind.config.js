@@ -54,9 +54,13 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
-  			'accent-warm': 'hsl(var(--accent-warm))',
-  			'accent-cool': 'hsl(var(--accent-cool))',
-  			'accent-success': 'hsl(var(--accent-success))'
+			'accent-warm': 'hsl(var(--accent-warm))',
+			'accent-cool': 'hsl(var(--accent-cool))',
+			'accent-success': 'hsl(var(--accent-success))',
+			'accent-purple': 'hsl(var(--accent-purple))',
+			'accent-pink': 'hsl(var(--accent-pink))',
+			'accent-yellow': 'hsl(var(--accent-yellow))',
+			'accent-orange': 'hsl(var(--accent-orange))'
   		}
   	}
   },

@@ -1,4 +1,8 @@
+# Flask - Web framework for creating the REST API server
 flask==3.0.0
-flask-cors==4.0.0
-requests==2.31.0
 
+# Flask-CORS - Enables Cross-Origin Resource Sharing (allows frontend to connect)
+flask-cors==4.0.0
+
+# Requests - HTTP library for making API calls to Open-Meteo
+requests==2.31.0

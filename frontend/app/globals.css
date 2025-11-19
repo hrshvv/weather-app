@@ -12,65 +12,73 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --background: 240 20% 98%;
+    --foreground: 240 10% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 0 0% 0%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 240 10% 10%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 95%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 220 8% 90%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 0 0% 20%;
+    --secondary: 240 10% 96%;
+    --secondary-foreground: 240 10% 10%;
+    --muted: 240 10% 96%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 220 90% 95%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 85%;
-    --input: 0 0% 85%;
-    --ring: 0 0% 0%;
-    --chart-1: 0 0% 50%;
-    --chart-2: 0 0% 40%;
-    --chart-3: 0 0% 30%;
-    --chart-4: 0 0% 20%;
-    --chart-5: 0 0% 10%;
-    --radius: 0.5rem;
-    /* Bright accent colors */
-    --accent-warm: 25 85% 55%;
-    --accent-cool: 200 90% 55%;
-    --accent-success: 150 75% 50%;
+    --border: 240 10% 90%;
+    --input: 240 10% 90%;
+    --ring: 200 100% 50%;
+    --chart-1: 200 100% 60%;
+    --chart-2: 25 100% 60%;
+    --chart-3: 150 80% 50%;
+    --chart-4: 280 80% 60%;
+    --chart-5: 340 80% 60%;
+    --radius: 0.75rem;
+    /* Bright vibrant accent colors */
+    --accent-warm: 25 100% 60%;
+    --accent-cool: 200 100% 60%;
+    --accent-success: 150 80% 50%;
+    --accent-purple: 280 80% 60%;
+    --accent-pink: 340 80% 60%;
+    --accent-yellow: 45 100% 60%;
+    --accent-orange: 30 100% 55%;
   }
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 220 8% 15%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 0% 80%;
-    --destructive-foreground: 0 0% 0%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 100%;
-    --chart-1: 0 0% 50%;
-    --chart-2: 0 0% 60%;
-    --chart-3: 0 0% 70%;
-    --chart-4: 0 0% 80%;
-    --chart-5: 0 0% 90%;
-    /* Bright accent colors */
-    --accent-warm: 25 90% 70%;
-    --accent-cool: 200 95% 70%;
-    --accent-success: 150 80% 65%;
+    --background: 240 15% 8%;
+    --foreground: 240 10% 98%;
+    --card: 240 15% 12%;
+    --card-foreground: 240 10% 98%;
+    --popover: 240 15% 12%;
+    --popover-foreground: 240 10% 98%;
+    --primary: 240 10% 98%;
+    --primary-foreground: 240 15% 8%;
+    --secondary: 240 15% 15%;
+    --secondary-foreground: 240 10% 98%;
+    --muted: 240 15% 15%;
+    --muted-foreground: 240 5% 70%;
+    --accent: 220 30% 20%;
+    --accent-foreground: 240 10% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 15% 25%;
+    --input: 240 15% 25%;
+    --ring: 200 100% 60%;
+    --chart-1: 200 100% 70%;
+    --chart-2: 25 100% 70%;
+    --chart-3: 150 80% 60%;
+    --chart-4: 280 80% 70%;
+    --chart-5: 340 80% 70%;
+    /* Bright vibrant accent colors for dark mode */
+    --accent-warm: 25 100% 65%;
+    --accent-cool: 200 100% 65%;
+    --accent-success: 150 80% 55%;
+    --accent-purple: 280 80% 65%;
+    --accent-pink: 340 80% 65%;
+    --accent-yellow: 45 100% 65%;
+    --accent-orange: 30 100% 60%;
   }
 }
 
@@ -96,6 +104,10 @@
   
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
   
   @keyframes fadeIn {
@@ -134,22 +146,85 @@
     -webkit-backdrop-filter: blur(10px);
   }
   
+  /* Gradient backgrounds */
+  .gradient-bg-warm {
+    background: linear-gradient(135deg, hsl(var(--accent-warm) / 0.1) 0%, hsl(var(--accent-orange) / 0.1) 100%);
+  }
+  
+  .gradient-bg-cool {
+    background: linear-gradient(135deg, hsl(var(--accent-cool) / 0.1) 0%, hsl(var(--accent-purple) / 0.1) 100%);
+  }
+  
+  .gradient-bg-primary {
+    background: linear-gradient(135deg, hsl(var(--accent-cool)) 0%, hsl(var(--accent-purple)) 50%, hsl(var(--accent-warm)) 100%);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--accent-cool)), hsl(var(--accent-warm)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Bright card styles */
+  .card-bright {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 100%);
+    border: 2px solid hsl(var(--accent-cool) / 0.3);
+    box-shadow: 0 4px 20px hsl(var(--accent-cool) / 0.1), 0 0 0 1px hsl(var(--accent-cool) / 0.1);
+  }
+  
+  .card-bright:hover {
+    border-color: hsl(var(--accent-cool) / 0.5);
+    box-shadow: 0 8px 30px hsl(var(--accent-cool) / 0.2), 0 0 0 1px hsl(var(--accent-cool) / 0.2);
+    transform: translateY(-2px);
+  }
+  
   /* Custom scrollbar */
   .scrollbar-thin::-webkit-scrollbar {
-    height: 6px;
+    height: 8px;
+    width: 8px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--muted));
+    border-radius: 4px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground));
-    border-radius: 3px;
+    background: linear-gradient(135deg, hsl(var(--accent-cool)), hsl(var(--accent-warm)));
+    border-radius: 4px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--foreground));
+    background: linear-gradient(135deg, hsl(var(--accent-warm)), hsl(var(--accent-cool)));
+  }
+  
+  /* Responsive text sizes */
+  @media (max-width: 640px) {
+    .text-responsive-xl {
+      font-size: 2.5rem;
+      line-height: 1.2;
+    }
+    .text-responsive-2xl {
+      font-size: 3rem;
+      line-height: 1.2;
+    }
+    .text-responsive-3xl {
+      font-size: 3.5rem;
+      line-height: 1.2;
+    }
+  }
+  
+  @media (min-width: 641px) {
+    .text-responsive-xl {
+      font-size: 3rem;
+    }
+    .text-responsive-2xl {
+      font-size: 4rem;
+    }
+    .text-responsive-3xl {
+      font-size: 5rem;
+    }
   }
 }
 
